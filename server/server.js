@@ -1,5 +1,5 @@
+require("dotenv").config();   // ✅ MUST be FIRST
 const app = require("./app");
-require("dotenv").config();
 
 const PORT = process.env.PORT || 5000;
 
