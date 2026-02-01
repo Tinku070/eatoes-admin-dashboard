@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import api from "../services/api";
 import { useDebounce } from "../hooks/useDebounce";
 
@@ -10,19 +10,8 @@ const MenuManagement = () => {
 
   const debouncedSearch = useDebounce(search);
 
-  useEffect(() => {
-    fetchMenu();
-  }, []);
-
-  useEffect(() => {
-    if (debouncedSearch) {
-      searchMenu();
-    } else {
-      fetchMenu();
-    }
-  }, [debouncedSearch]);
-
-  const fetchMenu = async () => {
+  // Fetch all menu items
+  const fetchMenu = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get("/menu");
@@ -32,9 +21,10 @@ const MenuManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const searchMenu = async () => {
+  // Search menu items
+  const searchMenu = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get(`/menu/search?q=${debouncedSearch}`);
@@ -44,8 +34,21 @@ const MenuManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch]);
 
+  useEffect(() => {
+    fetchMenu();
+  }, [fetchMenu]);
+
+  useEffect(() => {
+    if (debouncedSearch) {
+      searchMenu();
+    } else {
+      fetchMenu();
+    }
+  }, [debouncedSearch, searchMenu, fetchMenu]);
+
+  // Optimistic UI toggle
   const toggleAvailability = async (id, currentStatus) => {
     const previousMenu = [...menu];
 
@@ -61,7 +64,7 @@ const MenuManagement = () => {
       await api.patch(`/menu/${id}/availability`);
     } catch {
       setMenu(previousMenu);
-      alert("Failed to update availability. Reverted.");
+      alert("Failed to update availability. Reverted changes.");
     }
   };
 
@@ -73,6 +76,7 @@ const MenuManagement = () => {
         placeholder="Search menu..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        style={{ marginBottom: "10px" }}
       />
 
       {loading && <p>Loading...</p>}

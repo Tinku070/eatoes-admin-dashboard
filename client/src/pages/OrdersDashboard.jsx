@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import api from "../services/api";
 
 const OrdersDashboard = () => {
@@ -6,16 +6,16 @@ const OrdersDashboard = () => {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [status, page]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     const res = await api.get(
       `/orders?status=${status}&page=${page}&limit=5`
     );
     setOrders(res.data);
-  };
+  }, [status, page]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const updateStatus = async (id, newStatus) => {
     await api.patch(`/orders/${id}/status`, { status: newStatus });
@@ -35,7 +35,10 @@ const OrdersDashboard = () => {
       </select>
 
       {orders.map((order) => (
-        <div key={order._id} style={{ border: "1px solid #ccc", margin: "10px" }}>
+        <div
+          key={order._id}
+          style={{ border: "1px solid #ccc", margin: "10px", padding: "10px" }}
+        >
           <p>
             <strong>{order.customerName}</strong> – Table{" "}
             {order.tableNumber}
