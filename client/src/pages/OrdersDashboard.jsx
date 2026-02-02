@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -8,7 +8,7 @@ function OrdersDashboard() {
   const [status, setStatus] = useState("All");
   const [page, setPage] = useState(1);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     const res = await axios.get(`${API_URL}/api/orders`, {
       params: {
         status: status === "All" ? "" : status,
@@ -16,12 +16,13 @@ function OrdersDashboard() {
         limit: 5
       }
     });
+
     setOrders(res.data.orders || res.data);
-  };
+  }, [status, page]);
 
   useEffect(() => {
     fetchOrders();
-  }, [status, page]);
+  }, [fetchOrders]);
 
   const updateOrderStatus = async (id, newStatus) => {
     await axios.patch(`${API_URL}/api/orders/${id}/status`, {
@@ -32,13 +33,9 @@ function OrdersDashboard() {
 
   return (
     <>
-      <h2 style={{ marginBottom: "12px" }}>📦 Orders Dashboard</h2>
+      <h2>📦 Orders Dashboard</h2>
 
-      <select
-        value={status}
-        onChange={(e) => setStatus(e.target.value)}
-        style={{ padding: "6px", marginBottom: "12px" }}
-      >
+      <select value={status} onChange={(e) => setStatus(e.target.value)}>
         <option>All</option>
         <option>Pending</option>
         <option>Preparing</option>
@@ -48,39 +45,13 @@ function OrdersDashboard() {
       </select>
 
       {orders.map(order => (
-        <div
-          key={order._id}
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            padding: "16px",
-            marginBottom: "12px"
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <strong>{order.customerName}</strong>
-            <span>Table {order.tableNumber}</span>
-          </div>
-
-          <div
-            style={{
-              marginTop: "8px",
-              fontWeight: "bold",
-              color:
-                order.status === "Pending" ? "orange" :
-                order.status === "Preparing" ? "blue" :
-                order.status === "Ready" ? "green" : "gray"
-            }}
-          >
-            Status: {order.status}
-          </div>
+        <div key={order._id} style={{ border: "1px solid #ccc", padding: "10px", marginTop: "10px" }}>
+          <strong>{order.customerName}</strong> – Table {order.tableNumber}
+          <p>Status: {order.status}</p>
 
           <select
             value={order.status}
-            onChange={(e) =>
-              updateOrderStatus(order._id, e.target.value)
-            }
-            style={{ marginTop: "8px", padding: "6px" }}
+            onChange={(e) => updateOrderStatus(order._id, e.target.value)}
           >
             <option>Pending</option>
             <option>Preparing</option>
@@ -91,17 +62,11 @@ function OrdersDashboard() {
         </div>
       ))}
 
-      <div style={{ marginTop: "12px" }}>
-        <button
-          onClick={() => setPage(p => Math.max(p - 1, 1))}
-          disabled={page === 1}
-        >
+      <div style={{ marginTop: "10px" }}>
+        <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>
           Prev
         </button>
-        <button
-          onClick={() => setPage(p => p + 1)}
-          style={{ marginLeft: "8px" }}
-        >
+        <button onClick={() => setPage(p => p + 1)} style={{ marginLeft: "8px" }}>
           Next
         </button>
       </div>
