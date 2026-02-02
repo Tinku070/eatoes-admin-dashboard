@@ -1,107 +1,113 @@
-import { useEffect, useState, useCallback } from "react";
-import api from "../services/api";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { useDebounce } from "../hooks/useDebounce";
 
-const MenuManagement = () => {
+const API_URL = process.env.REACT_APP_API_URL;
+
+function MenuManagement() {
   const [menu, setMenu] = useState([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
 
-  const debouncedSearch = useDebounce(search);
-
-  // Fetch all menu items
-  const fetchMenu = useCallback(async () => {
+  const fetchMenu = async () => {
     try {
-      setLoading(true);
-      const res = await api.get("/menu");
+      const res = await axios.get(`${API_URL}/api/menu`, {
+        params: { q: debouncedSearch }
+      });
       setMenu(res.data);
+      setError("");
     } catch {
       setError("Failed to load menu");
-    } finally {
-      setLoading(false);
     }
-  }, []);
-
-  // Search menu items
-  const searchMenu = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/menu/search?q=${debouncedSearch}`);
-      setMenu(res.data);
-    } catch {
-      setError("Search failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch]);
+  };
 
   useEffect(() => {
     fetchMenu();
-  }, [fetchMenu]);
+  }, [debouncedSearch]);
 
-  useEffect(() => {
-    if (debouncedSearch) {
-      searchMenu();
-    } else {
-      fetchMenu();
-    }
-  }, [debouncedSearch, searchMenu, fetchMenu]);
-
-  // Optimistic UI toggle
   const toggleAvailability = async (id, currentStatus) => {
-    const previousMenu = [...menu];
-
-    setMenu(
-      menu.map((item) =>
-        item._id === id
-          ? { ...item, isAvailable: !currentStatus }
-          : item
-      )
-    );
+    const previous = [...menu];
+    setMenu(menu.map(item =>
+      item._id === id ? { ...item, isAvailable: !currentStatus } : item
+    ));
 
     try {
-      await api.patch(`/menu/${id}/availability`);
+      await axios.patch(`${API_URL}/api/menu/${id}/availability`);
     } catch {
-      setMenu(previousMenu);
-      alert("Failed to update availability. Reverted changes.");
+      setMenu(previous);
+      alert("Failed to update availability");
     }
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Menu Management</h2>
+    <>
+      <h2 style={{ marginBottom: "12px" }}>🍽️ Menu Management</h2>
 
       <input
-        placeholder="Search menu..."
+        type="text"
+        placeholder="Search menu items..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{ marginBottom: "10px" }}
+        style={{
+          padding: "10px",
+          width: "100%",
+          maxWidth: "350px",
+          marginBottom: "16px",
+          borderRadius: "6px",
+          border: "1px solid #ccc"
+        }}
       />
 
-      {loading && <p>Loading...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <ul>
-        {menu.map((item) => (
-          <li key={item._id} style={{ marginBottom: "10px" }}>
-            <strong>{item.name}</strong> – ₹{item.price} –{" "}
-            <span style={{ color: item.isAvailable ? "green" : "red" }}>
-              {item.isAvailable ? "Available" : "Unavailable"}
-            </span>
+      <ul style={{ listStyle: "none", padding: 0 }}>
+        {menu.map(item => (
+          <li
+            key={item._id}
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              padding: "12px 16px",
+              marginBottom: "10px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}
+          >
+            <div>
+              <strong>{item.name}</strong>
+              <div style={{ fontSize: "14px", color: "#555" }}>
+                ₹{item.price} · {item.category}
+              </div>
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "bold",
+                  color: item.isAvailable ? "green" : "red"
+                }}
+              >
+                {item.isAvailable ? "Available" : "Unavailable"}
+              </div>
+            </div>
+
             <button
-              style={{ marginLeft: "10px" }}
-              onClick={() =>
-                toggleAvailability(item._id, item.isAvailable)
-              }
+              onClick={() => toggleAvailability(item._id, item.isAvailable)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "6px",
+                border: "none",
+                cursor: "pointer",
+                background: item.isAvailable ? "#ffe0e0" : "#e0ffe5"
+              }}
             >
               Toggle
             </button>
           </li>
         ))}
       </ul>
-    </div>
+    </>
   );
-};
+}
 
 export default MenuManagement;

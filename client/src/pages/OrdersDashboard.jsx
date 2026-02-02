@@ -1,55 +1,86 @@
-import { useEffect, useState, useCallback } from "react";
-import api from "../services/api";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-const OrdersDashboard = () => {
+const API_URL = process.env.REACT_APP_API_URL;
+
+function OrdersDashboard() {
   const [orders, setOrders] = useState([]);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("All");
   const [page, setPage] = useState(1);
 
-  const fetchOrders = useCallback(async () => {
-    const res = await api.get(
-      `/orders?status=${status}&page=${page}&limit=5`
-    );
-    setOrders(res.data);
-  }, [status, page]);
+  const fetchOrders = async () => {
+    const res = await axios.get(`${API_URL}/api/orders`, {
+      params: {
+        status: status === "All" ? "" : status,
+        page,
+        limit: 5
+      }
+    });
+    setOrders(res.data.orders || res.data);
+  };
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+  }, [status, page]);
 
-  const updateStatus = async (id, newStatus) => {
-    await api.patch(`/orders/${id}/status`, { status: newStatus });
+  const updateOrderStatus = async (id, newStatus) => {
+    await axios.patch(`${API_URL}/api/orders/${id}/status`, {
+      status: newStatus
+    });
     fetchOrders();
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Orders Dashboard</h2>
+    <>
+      <h2 style={{ marginBottom: "12px" }}>📦 Orders Dashboard</h2>
 
-      <select onChange={(e) => setStatus(e.target.value)}>
-        <option value="">All</option>
-        <option value="Pending">Pending</option>
-        <option value="Preparing">Preparing</option>
-        <option value="Ready">Ready</option>
-        <option value="Delivered">Delivered</option>
+      <select
+        value={status}
+        onChange={(e) => setStatus(e.target.value)}
+        style={{ padding: "6px", marginBottom: "12px" }}
+      >
+        <option>All</option>
+        <option>Pending</option>
+        <option>Preparing</option>
+        <option>Ready</option>
+        <option>Delivered</option>
+        <option>Cancelled</option>
       </select>
 
-      {orders.map((order) => (
+      {orders.map(order => (
         <div
           key={order._id}
-          style={{ border: "1px solid #ccc", margin: "10px", padding: "10px" }}
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            padding: "16px",
+            marginBottom: "12px"
+          }}
         >
-          <p>
-            <strong>{order.customerName}</strong> – Table{" "}
-            {order.tableNumber}
-          </p>
-          <p>Status: {order.status}</p>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <strong>{order.customerName}</strong>
+            <span>Table {order.tableNumber}</span>
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+              fontWeight: "bold",
+              color:
+                order.status === "Pending" ? "orange" :
+                order.status === "Preparing" ? "blue" :
+                order.status === "Ready" ? "green" : "gray"
+            }}
+          >
+            Status: {order.status}
+          </div>
 
           <select
             value={order.status}
             onChange={(e) =>
-              updateStatus(order._id, e.target.value)
+              updateOrderStatus(order._id, e.target.value)
             }
+            style={{ marginTop: "8px", padding: "6px" }}
           >
             <option>Pending</option>
             <option>Preparing</option>
@@ -60,12 +91,22 @@ const OrdersDashboard = () => {
         </div>
       ))}
 
-      <button onClick={() => setPage(page - 1)} disabled={page === 1}>
-        Prev
-      </button>
-      <button onClick={() => setPage(page + 1)}>Next</button>
-    </div>
+      <div style={{ marginTop: "12px" }}>
+        <button
+          onClick={() => setPage(p => Math.max(p - 1, 1))}
+          disabled={page === 1}
+        >
+          Prev
+        </button>
+        <button
+          onClick={() => setPage(p => p + 1)}
+          style={{ marginLeft: "8px" }}
+        >
+          Next
+        </button>
+      </div>
+    </>
   );
-};
+}
 
 export default OrdersDashboard;
